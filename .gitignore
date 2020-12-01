@@ -1,0 +1,13 @@
+/save/
+/.vs/
+/node_modules/
+/.vscode/
+/erajs/
+/venv/
+/开发文档/
+*.bat
+*.js
+*.json
+*.yml
+*.csv
+!run.bat
