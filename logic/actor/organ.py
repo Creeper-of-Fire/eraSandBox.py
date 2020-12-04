@@ -1,6 +1,5 @@
-from typing import List, Dict, Optional
-
 import copy
+from typing import List, Dict, Optional
 
 from logic.actor import character, modifier
 from logic.data import file_parser, data_process
@@ -8,12 +7,12 @@ from logic.data import file_parser, data_process
 
 class OrganAdmin:
     model: str  # 角色的器官模板，比如human
-
+    all_organs: Dict[str, Optional['Organ']] = {}
     master: Optional['character.Character']
 
     def __init__(self):
         self.model = 'human'
-        self.all_organs: Dict[str, Organ] = {}
+        self.all_organs = {}
 
     def set_default(self, master: Optional['character.Character'], model: str):
         self.model = model
@@ -25,18 +24,18 @@ class OrganAdmin:
         self.all_organs['全身'].set_default('全身', self, struct_data)
         '''self._set_default_insert_structure(insert_data)'''
 
-    def data_default(self, organ_data: Dict[
-        str,
-        Dict[str, Dict[str, str or int or float or Dict[str, Dict[str, str or int or float]]]]
-    ]):
+    def data_default(self, organ_data):
+        """
+        :type organ_data: Dict[str, Dict[str, Dict[str, str or int or float or Dict[str, Dict[str, str or int or
+        float]]]]]
+        """
         for i in self.all_organs:
             if i in organ_data:
                 self.all_organs[i].data_default(organ_data[i])
 
     def settle(self):
-        a = self.all_organs
-        for i in a:
-            a[i].settle()
+        self.all_organs['全身'].settle()
+        # 递归汇总全部的器官（但是可能有时间停止）
 
     def append_organ(self, key, val):
         """
@@ -98,7 +97,7 @@ class NumData:
 
     def __init__(self):
         self.modifiers = modifier.ModifierAdmin()
-        self.low_list: List[Organ] = []
+        self.low_list: List[Optional['Organ']] = []
 
         self.level = 0
         self.exp = 0
@@ -107,7 +106,7 @@ class NumData:
         self.pain = 0
         self.expand = 0
         self.delight = 0
-        self.destruction = 0
+        self._destruction = 0
         self.lust = 0
 
         self._shown_data = {'等级': self.level,  # 似乎等级应该单独出来
@@ -122,6 +121,56 @@ class NumData:
                             }
         self._temp_data = copy_dict_num(self._shown_data)
         self._base_data = copy_dict_num(self._shown_data)
+
+    def settle_num(self):  # 回合结束时的数据总结
+        if len(self.low_list) != 0:
+            # 先汇总下级器官
+            for i_part in self.low_list:
+                i_part.settle()
+                for key in self._shown_data:
+                    self._shown_data[key] += i_part.num_data[key]
+        if '时间冻结' not in self.modifiers.names():
+            return
+        s = self._shown_data
+        b = self._base_data
+        m = self.modifiers
+        for key, value in s.items():
+            value -= b[key]  # 获得本回合的原始加值（这里定义了运算符）
+            # noinspection PyUnusedLocal
+            value = m.add_alt(key, value)
+            # 通过修正计算实际加值（为了效率而在总结时进行）
+        self._temp_data = copy_dict_num(s)  # self._num_temp用于获得口上
+        for key, value in b.items():
+            b += s[key]
+            s[key] += m.add_get(key, value)
+            # 通过修正获得显示值的加值
+
+    def _add_num(self, key: str, val: int or float):
+        part = len(self.low_list)
+        if part == 0:
+            self._shown_data[key] += val
+        else:
+            for i_part in self.low_list:  # type
+                add_val = val / part  # 未经过加权，直接分配
+                i_part.num_data._add_num(key, add_val)
+
+    # ---------setter和getter--------- #
+    @property
+    def destruction(self) -> float:
+        # 破坏度，最大100，会查找自己的下级器官，得到破坏度上限
+        # destruction不应该手动修改，而是应该通过修正来增加
+        part = 0
+        val = 0
+        if len(self.low_list) == 0:
+            part = 1
+        else:
+            for i in self.low_list:
+                part = part + 1
+                val = val + i.num_data.destruction
+        dt = self._destruction / part
+        return dt
+
+    # ---------setter和getter--------- #
 
     def __getitem__(self, item: str):
         return self._shown_data[item]
@@ -154,23 +203,6 @@ class NumData:
         c = NumData()
         c._shown_data = self._shown_data.copy()
         return c
-
-    def settle_num(self):  # 回合结束时的数据总结
-        if '时间冻结' not in self.modifiers.names():
-            return
-        s = self._shown_data
-        b = self._base_data
-        m = self.modifiers
-        for key, value in s.items():
-            value -= b[key]  # 获得本回合的原始加值（这里定义了运算符）
-            # noinspection PyUnusedLocal
-            value = m.add_alt(key, value)
-            # 通过修正计算实际加值（为了效率而在总结时进行）
-        self._temp_data = copy_dict_num(s)  # self._num_temp用于获得口上
-        for key, value in b.items():
-            b += s[key]
-            s[key] += m.add_get(key, value)
-            # 通过修正获得显示值的加值
 
 
 class StrData:
@@ -266,6 +298,7 @@ class Organ:
         self._struct_default(struct_data[name])  # 进行器官结构的默认配置
 
     def data_default(self, organ_data):
+        # 未使用
         """
         :type organ_data: Dict[ str, Dict[str, str or int or float or Dict[str, Dict[str, str or int or float]]]]
         """
@@ -318,71 +351,6 @@ class Organ:
         else:
             return
 
-    # 数字处理部分，num_data相关
-    def _sum_all(self):
-        for i in self._num_data:
-            self._sum_num(i)
-
-    def _sum_num(self, key: str):
-        # 汇总
-        if len(self.low_list) != 0:
-            for i_low in self.low_list:
-                i_low._sum_num(key)
-
-            for i_low in self.low_list:
-                self._num_data[key] = self._num_data[key] + i_low.get_num(key)
-            # 不经过modifier加成地加，但是get_num还是被加成了
-
-    def get_num(self, key: str) -> int or float:
-        if key in self._num_data:
-            self._sum_num(key)
-            g = self.modifiers.add_get(key, self._num_data[key])
-            return g
-        else:
-            return 0
-
-    def add_num_temp(self, key: str, val: int or float):
-        # self._sum_num(key)
-        a = self.modifiers.add_alt(key, val)  # 获得加成
-        self._num_temp[key] = self._num_temp[key] + a
-
     def settle(self):
         self.modifiers.time_pass()
-        if '时间冻结' in self.modifiers.names():
-            return
         self._settle_num()
-
-    '''def _settle_num(self):
-        for key in self._num_data:
-            b = self._num_temp
-            if b[key] == 0:
-                return
-    
-            a = self._num_data
-            a[key] = a[key] + b[key]
-            self._sum_num(key)
-            add_val = self._num_temp[key]
-            self._add_num(key, add_val)'''
-
-    def _add_num(self, key: str, val: int or float):
-        part = len(self.low_list)
-        if part == 0:
-            self._num_data[key] = self._num_data[key] + val
-        else:
-            for i_part in self.low_list:  # type
-                add_val = val / part  # 未经过加权，直接分配
-                i_part._add_num(key, add_val)
-
-    def destruction(self) -> float:
-        # 破坏度，最大100，会查找自己的下级器官，得到破坏度上限
-        part = 0
-        val = 0
-        self._sum_num('破坏 ')
-        if len(self.low_list) == 0:
-            part = 1
-        else:
-            for i in self.low_list:
-                part = part + 1
-                val = val + i.destruction()
-        dt = self._num_data['破坏'] / part
-        return dt

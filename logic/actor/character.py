@@ -1,7 +1,8 @@
 import copy
 from typing import Dict, List, Optional
-from logic.actor import organ, modifier, experience, equipment
+
 from logic.act import act_admin, environment
+from logic.actor import organ, modifier, experience, equipment
 from logic.data import file_parser, data_process
 
 
@@ -175,7 +176,7 @@ class Character:
         self.organs = organ.OrganAdmin()
         self.equipments = equipment.EquipmentAdmin()
         self.experiences = experience.ExperienceAdmin()
-        self.environment = environment.Environment()
+        '''self.environment = environment.Environment()'''
 
         self._num_data = NumData()
         '''self._num_shown = NumData()
@@ -223,7 +224,7 @@ class Character:
             self.modifiers.set_default(data['修正'])
 
         self.organs.set_default(self, data['器官模板'])
-        if not (data['器官'] is None):
+        if '器官' in data:
             self.organs.data_default(data['器官'])
 
         self.equipments.set_default(s_type)
@@ -232,9 +233,7 @@ class Character:
             self.experiences.set_default(data['经历'])
             c = self.experiences.data_list
             for i in c:
-                self.modifiers.set_default(
-                    c[i]['修正']
-                )  # 添加修正的时候，是利用了字典的特性来覆盖了之前的修正
+                self.modifiers.set_default(c[i]['修正'])  # 添加修正的时候，是利用了字典的特性来覆盖了之前的修正
                 self._data_default(c[i]['基础'])
                 if not ('器官' in c[i]):
                     continue

@@ -1,8 +1,9 @@
 from typing import List, Optional
 
 import erajs.api as era
-from logic.actor import character
+
 from logic.act import environment
+from logic.actor import character
 
 
 class CharacterAdmin:
@@ -16,8 +17,8 @@ class CharacterAdmin:
     def __init__(self) -> None:
         self.charalist = []
         null_chara = character.Character()
-        null_chara.set_default(0, 'NULL')
         self.add_chara(null_chara)
+        null_chara.set_default(0, 'NULL')
         # 添加空角色
         self.master = self.charalist[0]
         self.assist = self.charalist[0]
@@ -70,7 +71,6 @@ class CharacterAdmin:
 # 以后会移除
 
 version = 'Beta 0.0.2'
-
 
 '''class MainData:
     def __init__(self):
@@ -167,8 +167,8 @@ def ui_start_new_game_set():
         ui_make_chara('玩家')
 
     era.data['chara'] = CharacterAdmin()
-    era.data['environment_focus'] = environment.Site()
-    era.b('梦境的开端', start_new_game, popup='进行玩家属性设置')
+
+    era.b('梦境的开端', era.goto, start_new_game, popup='进行玩家属性设置')
 
 
 def ui_make_chara(character_type='玩家'):
@@ -183,6 +183,7 @@ def ui_make_chara(character_type='玩家'):
         era.t()
 
     def go_next():
+        temp.ctrl_able = True
         era.data['chara'].add_chara(temp)
         era.goto(ui_main)
         # 页面
@@ -257,6 +258,12 @@ def ui_main():
 
 
 def ui_make_love():
+    def train_start():
+        era.clear()
+        era.page()
+        era.data['environment_focus'].time_pass()
+        era.goto(ui_turn_focus)
+
     c = era.data['chara'].charalist
     era.page()
     train = environment.Site()
@@ -269,7 +276,7 @@ def ui_make_love():
             i.environment = train
     era.t('xxx了xxx，然后xxx')
     era.t()
-    era.b('开始', era.goto, ui_turn_focus)
+    era.b('开始', era.goto, train_start)
 
 
 def ui_turn_focus():

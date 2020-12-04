@@ -1,5 +1,7 @@
 from typing import List, Dict, Optional
+
 import erajs.api as era
+
 from logic.actor import character
 
 
@@ -135,12 +137,9 @@ class environment
             i.work()
         
     
-     _check_acts():  
+    _check_acts():  
         for (a of self.acts) 
             a.check_acts()
-        
-    
-
 '''
 
 

@@ -1,14 +1,8 @@
+import json
+import re
 from typing import List, Dict
 
-import erajs.api as era
-import erajs.engine as engine
-
-import xlrd
-import xlwt
-import random
 import yaml
-import re
-import json
 
 
 def open_file(a_type, b_type=''):
@@ -73,13 +67,14 @@ class FileYaml:
         self.data = yaml.load(file_data)'''
 
 
-def load_file(path: str, encoding="utf8") -> str:
+def load_file(path: str, encoding="utf-8") -> str:
     file = open(path, 'r', encoding=encoding)
     file_data = file.read()
+    file.close()
     return file_data
 
 
-def load_csv(path: str, encoding="utf8") -> List[List[str]]:
+def load_csv(path: str, encoding="utf-8") -> List[List[str]]:
     text = load_file(path, encoding)
     data = []
     for row in re.split('\r?\n', text):
@@ -87,17 +82,18 @@ def load_csv(path: str, encoding="utf8") -> List[List[str]]:
     return data
 
 
-def load_yaml(path: str, encoding="utf8") -> Dict:
-    text = load_file(path, encoding)
-    return yaml.load(text)
+def load_yaml(path: str, encoding="utf-8") -> Dict:
+    file = open(path, 'r', encoding="utf-8")
+    data = yaml.load(file, Loader=yaml.FullLoader)
+    return data
 
 
-def load_json(path: str, encoding="utf8") -> Dict:
+def load_json(path: str, encoding="utf-8") -> Dict:
     text = load_file(path, encoding)
     return json.loads(text)
 
 
-def load_auto(path: str, encoding="utf8"):
+def load_auto(path: str, encoding="utf-8"):
     suffix = re.search('\.(.+)$', path).group()
     if suffix == ".csv":
         return load_csv(path, encoding)
