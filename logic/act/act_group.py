@@ -2,7 +2,7 @@ from typing import List,Optional
 
 import erajs.api as era
 from logic.act import act
-from logic.character import character
+from logic.actor import character
 
 
 class ActGroup:
@@ -34,9 +34,12 @@ class ActGroup:
                 willing = willing + i_act.will()
         return willing
 
-    def work(self):
+    def _speak(self):
         era.t(self.describe)
         era.t()
+
+    def work(self):
+        self._speak()
         for i_act in self.act_list:
             i_act.work()
 

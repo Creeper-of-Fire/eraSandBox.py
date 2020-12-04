@@ -10,4 +10,5 @@
 *.json
 *.yml
 *.csv
+*.log
 !run.bat

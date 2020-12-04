@@ -1,17 +1,17 @@
-from typing import List
+from typing import List, Optional
 
 import erajs.api as era
-from logic.character import character
+from logic.actor import character
 from logic.act import environment
 
 
 class CharacterAdmin:
-    charalist: List[character.Character]
-    master: character.Character
-    assist: character.Character
-    target: character.Character
-    player: character.Character
-    choose: character.Character
+    charalist: List[Optional['character.Character']]
+    master: Optional['character.Character']
+    assist: Optional['character.Character']
+    target: Optional['character.Character']
+    player: Optional['character.Character']
+    choose: Optional['character.Character']
 
     def __init__(self) -> None:
         self.charalist = []
@@ -30,7 +30,7 @@ class CharacterAdmin:
         num: int = len(self.charalist) - 1
         return num
 
-    def add_chara(self, temp_chara: character.Character) -> None:
+    def add_chara(self, temp_chara: Optional['character.Character']) -> None:
         temp_chara.id = self.num() + 1
         self.charalist.append(temp_chara)
         self._re_list()
@@ -44,7 +44,7 @@ class CharacterAdmin:
         return
 
     def _re_list(self) -> None:
-        for i in range(0, self.num()+1):
+        for i in range(0, self.num() + 1):
             self.charalist[i].id = i
 
     def error_fix(self) -> None:
@@ -63,7 +63,7 @@ class CharacterAdmin:
             end = len(self.charalist) - 1
         a = []
         for i in range(start, end):
-            a.append(self.charalist[i].get_str('名字'))
+            a.append(self.charalist[i].str_data.name)
         return a
 
 
@@ -72,13 +72,15 @@ class CharacterAdmin:
 version = 'Beta 0.0.2'
 
 
-class MainData:
+'''class MainData:
     def __init__(self):
-        era.data['chara'] = CharacterAdmin()
-        self.characters = era.data['chara']
-
-
-data = MainData()
+        try:
+            self.characters = era.data['chara']
+            self.environment_focus = era.data['environment_focus']
+        except:
+            
+            self.characters = era.data['chara']
+            self.environment_focus = era.data['environment_focus']'''
 
 
 def ui_title():
@@ -162,24 +164,26 @@ def ui_start_new_game_set():
     era.page()
 
     def start_new_game():
-        data.characters = CharacterAdmin()
         ui_make_chara('玩家')
 
+    era.data['chara'] = CharacterAdmin()
+    era.data['environment_focus'] = environment.Site()
     era.b('梦境的开端', start_new_game, popup='进行玩家属性设置')
 
 
 def ui_make_chara(character_type='玩家'):
     def set_temp(key_value):
-        temp.set(key_name, key_value)
+        temp.str_data[key_name] = key_value
 
     def make_input(k_str: str):
+        # noinspection PyShadowingNames
         key_name = k_str
         era.t(str(k_str) + ':  ')
-        era.input(set_temp, str(temp.get(key_name)))
+        era.input(set_temp, str(temp.str_data[key_name]))
         era.t()
 
     def go_next():
-        data.characters.add_chara(temp)
+        era.data['chara'].add_chara(temp)
         era.goto(ui_main)
         # 页面
 
@@ -196,8 +200,8 @@ def ui_make_chara(character_type='玩家'):
 
 
 def ui_main():
-    def target_choose(target_choose: str):
-        c.target = c.charalist[int(target_choose[1])]
+    def target_choose(target: str):
+        c.target = c.charalist[int(target[1])]
         era.goto(ui_main)
 
     def main_save_game():
@@ -214,12 +218,12 @@ def ui_main():
         era.b('返回', era.back)
 
     def load_goto():
-        data['chara'] = character.Character()
-        data['chara'].load()
+        era.data['chara'] = character.Character()
+        # data.load()
         era.goto(ui_main)
 
     def target_info(id) -> str:
-        info = '[' + str(id) + ']' + str(c.charalist[id].get('名字'))
+        info = '[' + str(id) + ']' + str(c.charalist[id].str_data.name)
         return info
 
     def charalist_infos() -> List[str]:
@@ -229,15 +233,14 @@ def ui_main():
 
         return infos
 
-    c = data.characters  # 一个常驻的对象，类的全称是character_admin
+    c: CharacterAdmin = era.data['chara']  # 一个常驻的对象，类的全称是character_admin
     era.page()
-    num = c.num()
     c.error_fix()
-    era.t('主人' + c.master.get('名字'))
+    era.t('主人' + c.master.str_data.name)
     era.t()
-    era.t('助手' + c.assist.get('名字'))
+    era.t('助手' + c.assist.str_data.name)
     era.t()
-    era.t('目标' + c.target.get('名字'))
+    era.t('目标' + c.target.str_data.name)
     # era.t()
     # era.t('查看角色：')
     # era.dropdown(chara_list_infos(), target_choose, target_info(c.target.id))
@@ -254,31 +257,36 @@ def ui_main():
 
 
 def ui_make_love():
-    def turn_running():
-        train.turn_run()
-        era.goto(turn_prepare)
-
-    def turn_prepare():
-        era.page()
-        era.clear_gui()
-        era.b('下一回合', era.goto, turn_running)
-        era.b('结束', era.goto, ui_main)
-
-    c = data.characters.charalist
+    c = era.data['chara'].charalist
     era.page()
     train = environment.Site()
+    era.data['environment_focus'] = train
 
+    i: character.Character
     for i in c:
         if i.id != 0:
             train.add_chara(i)
+            i.environment = train
+    era.t('xxx了xxx，然后xxx')
+    era.t()
+    era.b('开始', era.goto, ui_turn_focus)
 
-    era.b('开始', era.goto, turn_prepare)
+
+def ui_turn_focus():
+    def turn_prepare():
+        era.page()
+        era.goto(ui_turn_focus)
+
+    a = era.data
+    era.clear_gui()
+    era.data['environment_focus'].turn()
+    era.b('下一回合', era.goto, turn_prepare)
+    era.b('结束', era.goto, ui_main)
 
 
 if __name__ == "__main__":  # 程序入口
     try:
         era.init()  # 初始化引擎
-        era.goto(ui_start_new_game_set())  # 进入游戏封面
-    except Exception as e:
-        # a.critical('{}'.format(e))
+        era.goto(ui_start_new_game_set)  # 进入游戏封面
+    except Exception:
         pass

@@ -1,7 +1,7 @@
 from typing import List, Optional
 
 from logic.act import act_group
-from logic.character import character
+from logic.actor import character
 
 
 class ActAdmin:
@@ -47,3 +47,4 @@ class ActAdmin:
     def work(self):
         for i in self.to_do_list:
             i.work()
+        self.to_do_list = []

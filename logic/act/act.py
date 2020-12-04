@@ -1,7 +1,7 @@
 from typing import List, Optional
 
-from logic.character import equipment, organ
-import logic.character.character as character
+from logic.actor import equipment, organ
+import logic.actor.character as character
 
 
 class Act:
@@ -12,7 +12,6 @@ class Act:
     passive_object: Optional['equipment.Equipment'] or Optional['character.Character']
     active_object: Optional['equipment.Equipment'] or Optional['character.Character']
     feature: List[str]
-    timer: int
 
     # timer为0时，是瞬间动作
     # timer为-1时，是永久动作
@@ -22,7 +21,6 @@ class Act:
         self.active_object = organ.Organ()
         self.passive_object = organ.Organ()
         self.feature = []
-        self.timer = 0
 
     def will(self) -> int:
         # 通过条件判断来判断是否可行，当大于0则可行
@@ -110,7 +108,7 @@ class Act:
 class Touch(Act):
     def __init__(self):
         super(Touch, self).__init__()
-        self.name = '触摸'
+        self.name = 'name_touch'
         self.describe = 'describe_touch'
         self.timer = 0
 
@@ -121,4 +119,23 @@ class Touch(Act):
         return True
 
     def work(self):
-        pass
+        super(Touch, self).work()
+        self.active_character.num_data.max_physical_power -= 1900
+
+
+class Hit(Act):
+    def __init__(self):
+        super(Hit, self).__init__()
+        self.name = 'name_hit'
+        self.describe = 'describe_hit'
+        self.timer = 0
+
+    def will(self) -> int:
+        return 1
+
+    def able(self) -> bool:
+        return True
+
+    def work(self):
+        super(Hit, self).work()
+

@@ -26,63 +26,79 @@ class ModifierAdmin:
         if '时间冻结' in a:
             a['时间冻结'].time_pass(past_time)
             if a['时间冻结'].timer == 0:
-                '''delete a['时间冻结']'''
-                pass
-        for i in a:
+                del a['时间冻结']
+        for i in list(a.keys()):
             b = a[i]
             b.time_pass(past_time)
             if b.timer == 0:
-                '''delete a[i] #这种删除不知道对不对'''
-                pass
+                del a[i]
 
     def remove_modifier(self, name):
         a = self.modifiers
         a.pop(name)
 
     def add_get(self, key: str, val: int or float):
+        def __g_add(chara, _key: str):
+            add = 0
+            for i in chara.modifiers:
+                if _key in chara.modifiers[i].get_add:
+                    add = add + chara.modifiers[i].get_add[_key]
+            return add
+
+        def __g_mlt(chara, _key: str):
+            mlt = 1
+            for i in chara.modifiers:
+                if _key in chara.modifiers[i].get_mlt:
+                    mlt = mlt * chara.modifiers[i].get_mlt[_key]
+            return mlt
+
         if len(dir(self.modifiers)) == 0:  # 如果修正是空，不知道这样对不对
             return val
-
         # add_get是在get时提供修正，不影响原值
-        a = (val + self.__g_add(key)) * self.__g_mlt(key)
+        a = (val + __g_add(self, key)) * __g_mlt(self, key)
         return a
 
-    def __g_add(self, key: str):
-        add = 0
-        for i in self.modifiers:
-            if key in self.modifiers[i].get_add:
-                add = add + self.modifiers[i].get_add[key]
-        return add
+    def add_alt(self, key: str, val: int or float) -> int or float:
+        def __a_add(chara, _key: str) -> int or float:
+            add = 0
+            for i in chara.modifiers:
+                if _key in chara.modifiers[i].alt_add:
+                    add = add + chara.modifiers[i].alt_add[_key]
+            return add
 
-    def __g_mlt(self, key: str):
-        mlt = 1
-        for i in self.modifiers:
-            if key in self.modifiers[i].get_mlt:
-                mlt = mlt * self.modifiers[i].get_mlt[key]
+        def __a_mlt(chara, _key: str) -> int or float:
+            mlt = 1
+            for i in chara.modifiers:
+                if _key in chara.modifiers[i].alt_mlt:
+                    mlt = mlt * chara.modifiers[i].alt_mlt[_key]
+            return mlt
 
-        return mlt
-
-    def add_alt(self, key: str, val: int or float):
-        # add_alt是在add时提供修正，会影响“加上去的值”
+        # add_alt是在每回合结束时提供修正,对于加上去的值，会得到加成
         if len(dir(self.modifiers)) == 0:  # 如果修正是空，不知道这样对不对
             return val
-
-        a = (val + self.__a_add(key)) * self.__a_mlt(key)
+        a = (val + __a_add(self, key)) * __a_mlt(self, key)
         return a
 
-    def __a_add(self, key: str):
-        add = 0
-        for i in self.modifiers:
-            if key in self.modifiers[i].alt_add:
-                add = add + self.modifiers[i].alt_add[key]
-        return add
+    def add_end(self, key: str, val: int or float):
+        def __e_add(chara, _key: str):
+            add = 0
+            for i in chara.modifiers:
+                if _key in chara.modifiers[i].end_add:
+                    add = add + chara.modifiers[i].end_add[_key]
+            return add
 
-    def __a_mlt(self, key: str):
-        mlt = 1
-        for i in self.modifiers:
-            if key in self.modifiers[i].alt_mlt:
-                mlt = mlt * self.modifiers[i].alt_mlt[key]
-        return mlt
+        def __e_mlt(chara, _key: str):
+            mlt = 1
+            for i in chara.modifiers:
+                if _key in chara.modifiers[i].end_mlt:
+                    mlt = mlt * chara.modifiers[i].end_mlt[_key]
+            return mlt
+
+        # add_alt是在每回合结束时提供修正,对于加上去的值，会得到加成
+        if len(dir(self.modifiers)) == 0:  # 如果修正是空，不知道这样对不对
+            return val
+        a = (val + __e_add(self, key)) * __e_mlt(self, key)
+        return a
 
     def names(self) -> List[str]:
         a: List[str] = []
@@ -122,6 +138,8 @@ class Modifier:
         self.get_mlt = {}
         self.alt_add = {}
         self.alt_mlt = {}
+        self.end_add = {}
+        self.end_mlt = {}
         self.timer = 0  # 为负一则是永久的
 
     def set_default(self, name, timer: int = -1):
@@ -129,12 +147,23 @@ class Modifier:
         data = file_parser.open_file('修正配置', self.__class__.__name__)
         if data is None:
             return
-        if self.name in data:
-            self.describe = data[self.name]['describe']
-            self.get_add = data[self.name]['g_add']
-            self.get_mlt = data[self.name]['g_mlt']
-            self.alt_add = data[self.name]['a_add']
-            self.alt_mlt = data[self.name]['a_mlt']
+        if name in data:
+            a = data[name]
+            # 傻逼代码
+            if 'describe' in a:
+                self.describe = a['describe']
+            if 'get_add' in a:
+                self.get_add = a['g_add']
+            if 'get_mlt' in a:
+                self.get_mlt = a['g_mlt']
+            if 'alt_add' in a:
+                self.alt_add = a['a_add']
+            if 'alt_mlt' in a:
+                self.alt_mlt = a['a_mlt']
+            if 'end_add' in a:
+                self.end_add = a['e_add']
+            if 'end_mlt' in a:
+                self.end_mlt = a['e_mlt']
 
     def time_pass(self, past_time):
         a = self.timer
@@ -166,6 +195,7 @@ class Destruction(Modifier):
 class Insert(Modifier):
     def __init__(self):
         super(Insert, self).__init__()
+
 
 class Experience(Modifier):
     def __init__(self):

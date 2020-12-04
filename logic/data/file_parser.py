@@ -27,6 +27,8 @@ def open_file(a_type, b_type=''):
         file_data = load_auto('data/配置表/器官注册/{}.yml'.format(b_type))
     elif a_type == '修正配置':
         file_data = load_auto('data/配置表/修正/{}.yml'.format(b_type))
+    elif a_type == '修正配置':
+        file_data = load_auto('data/配置表/动作配置.csv')
     else:
         return None
     return file_data
@@ -81,7 +83,7 @@ def load_csv(path: str, encoding="utf8") -> List[List[str]]:
     text = load_file(path, encoding)
     data = []
     for row in re.split('\r?\n', text):
-        data.append(row.split('.'))
+        data.append(row.split(','))
     return data
 
 
