@@ -8,8 +8,8 @@ from logic.actor import character
 # environment是一个数据和界面交互的层
 class Environment(object):
     characters: List[Optional['character.Character']]
-    start: List[int or float]
-    action_values: Dict[str, int or float]
+    start: List[Union[int, float]]
+    action_values: Dict[str, Union[int, float]]
     to_do_chara: List[Optional['character.Character']]
 
     # items: List[I.ia.item]
@@ -83,6 +83,7 @@ class Environment(object):
     def time_pass(self):
         for i in self.characters:
             a = i.num_data
+            a.settle_when_turn_check()
             a.action_bar += a.action_speed
             # 在一个回合中，所有操作都是对临时的数据的
 

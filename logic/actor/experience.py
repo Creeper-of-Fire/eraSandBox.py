@@ -9,7 +9,7 @@ class ExperienceAdmin(object):
         self.data_list = {}
         self.experiences: Dict[str, Experience] = {}
 
-    def set_default(self, s_list: Dict[str, str or int or float]):
+    def set_default(self, s_list: Dict[str, str or Union[int, float]]):
         data = file_parser.open_file('经历配置')
         data_list = {}
         for i in s_list:

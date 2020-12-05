@@ -7,7 +7,7 @@ class ModifierAdmin(object):
     def __init__(self):
         self.modifiers: Dict[str, Modifier] = {}
 
-    def set_default(self, data: Dict[str, Dict[str, str or int or float]]):
+    def set_default(self, data: Dict[str, Dict[str, str or Union[int, float]]]):
         if data is None:
             return
         for i in data:
@@ -37,10 +37,11 @@ class ModifierAdmin(object):
         a = self.modifiers
         a.pop(name)
 
-    def addition_when_get_value(self, key: str, val: int or float):
+    def addition_when_get_value(self, key: str, val: Union[int, float]):
         """
         相当于自带的数据，在回合末会计算并加到临时数据中
         """
+
         def __g_add(chara, _key: str):
             add = 0
             for i in chara.modifiers:
@@ -61,16 +62,17 @@ class ModifierAdmin(object):
         a = (val + __g_add(self, key)) * __g_mlt(self, key)
         return a
 
-    def addition_when_alt_by_act(self, key: str, val: int or float) -> int or float:
+    def addition_when_alt_by_act(self, key: str, val: Union[int, float]) -> Union[int, float]:
         """每个回合加上去的数据会成为临时数据，在回合结束时转变为加值"""
-        def __a_add(chara, _key: str) -> int or float:
+
+        def __a_add(chara, _key: str) -> Union[int, float]:
             add = 0
             for i in chara.modifiers:
                 if _key in chara.modifiers[i].alt_add:
                     add = add + chara.modifiers[i].alt_add[_key]
             return add
 
-        def __a_mlt(chara, _key: str) -> int or float:
+        def __a_mlt(chara, _key: str) -> Union[int, float]:
             mlt = 1
             for i in chara.modifiers:
                 if _key in chara.modifiers[i].alt_mlt:
@@ -83,7 +85,7 @@ class ModifierAdmin(object):
         a = (val + __a_add(self, key)) * __a_mlt(self, key)
         return a
 
-    def add_end(self, key: str, val: int or float):
+    def add_end(self, key: str, val: Union[int, float]):
         def __e_add(chara, _key: str):
             add = 0
             for i in chara.modifiers:
@@ -129,10 +131,10 @@ class ModifierAdmin(object):
 class Modifier(object):
     name: str
     describe: str
-    get_add: Dict[str, int or float]
-    get_mlt: Dict[str, int or float]
-    alt_add: Dict[str, int or float]
-    alt_mlt: Dict[str, int or float]
+    get_add: Dict[str, Union[int, float]]
+    get_mlt: Dict[str, Union[int, float]]
+    alt_add: Dict[str, Union[int, float]]
+    alt_mlt: Dict[str, Union[int, float]]
     timer: int
 
     def __init__(self):

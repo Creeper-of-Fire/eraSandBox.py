@@ -1,12 +1,11 @@
 import random
-
 from typing import List, Dict
 
 from logic.data import file_parser
 
 
-def process_load_data(data: str or int or float) -> str or int or float:
-    def str_is_number(test_str:str) -> bool:
+def process_load_data(data: str or Union[int, float]) -> str or Union[int, float]:
+    def str_is_number(test_str: str) -> bool:
         try:
             f = float(test_str)
             return True

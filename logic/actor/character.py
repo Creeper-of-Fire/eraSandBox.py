@@ -1,5 +1,5 @@
 import copy
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 from logic.act import act_admin, environment
 from logic.actor import organ, modifier, experience, equipment
@@ -7,99 +7,124 @@ from logic.data import file_parser, data_process
 
 
 class NumData(object):
-    data: Dict[str, int]
+    """存储数字数据的类。
+    在这个游戏中，运算量的大头在角色AI部分涉及的大量数据处理。
+
+    Attributes:
+        _shown_data: 对外Read-only的数据，在内部通过settle_when_turn_check来从_base_data结算
+        _base_data: 理论上private的数据，但是能通过__setitem__来修改，通过__getitem__来读取（约定只在初始化时这样做）
+        _add_data: 对外Write-only的数据，在内部通过settle_when_turn_end来修改_base_data的数据
+        modifiers: 自身的修正，在回合开始结束时都会影响数据
+        action_bar: 行动条
+    """
     modifiers: modifier.ModifierAdmin  # 修正管理
 
     class Data(object):
         # <editor-fold desc="Data类">
         def __init__(self):
-            self.max_physical_power = 0
-            self.physical_power = 0
-            self.max_spirit_power = 0
-            self.spirit_power = 0
-            self.action_bar = 0
-            self.action_speed = 0
+            """由于这里的数据是基础类，data没有进行引用"""
+            self.max_physical_power: int = 0
+            self.physical_power: int = 0
+            self.max_spirit_power: int = 0
+            self.spirit_power: int = 0
 
-            self.height = 0
-            self.weight = 0
+            self.action_speed: float = 0
 
-            self._data = {'最大体力': self.max_physical_power,
-                          '体力': self.physical_power,
-                          '最大精力': self.max_spirit_power,
-                          '精力': self.spirit_power,
-                          '行动条': self.action_bar,
-                          '行动速度': self.action_speed,
+            self.height: float = 0
+            self.weight: float = 0
 
-                          '身高': self.height,
-                          '体重': self.weight}
+        def _dict_to_data(self, _data: Dict[str, Union[int, float]]):
+            """解压dict到数据，通常在进行设置时和回合结束时"""
 
-        def __getitem__(self, item: str):
-            return self._data[item]
+            if '最大体力' in _data:
+                self.max_physical_power = _data['最大体力']
+            if '体力' in _data:
+                self.physical_power = _data['体力']
+            if '最大精力' in _data:
+                self.max_spirit_power = _data['最大精力']
+            if '精力' in _data:
+                self.spirit_power = _data['精力']
+            if '行动速度' in _data:
+                self.action_speed = _data['行动速度']
 
-        def __setitem__(self, key: str, value: int):
-            self._data[key] = value
+            if '身高' in _data:
+                self.height = _data['身高']
+            if '体重' in _data:
+                self.weight = _data['体重']
+
+        def _data_to_dict(self) -> Dict[str, Union[int, float]]:
+            """压缩数据到dict"""
+            _data = {'最大体力': self.max_physical_power,
+                     '体力': self.physical_power,
+                     '最大精力': self.max_spirit_power,
+                     '精力': self.spirit_power,
+                     '行动速度': self.action_speed,
+
+                     '身高': self.height,
+                     '体重': self.weight}
+            return _data
+
+        def __getitem__(self, key: str):
+            _data = self._data_to_dict()
+            return _data[key]
+
+        def __setitem__(self, key: str, value: Union[int, float]):
+            _data = {key: value}
+            self._dict_to_data(_data)
 
         def __iter__(self):
-            return self._data.__iter__()
-
-        def __add__(self, other):
-            a: Dict = self._data
-            # noinspection PyProtectedMember
-            b: Dict = other._data
-            c = NumData.Data()
-            for i in self._data:
-                c[i] = a[i] + b[i]
-            return c
-
-        def __sub__(self, other):
-            a: Dict = self._data
-            # noinspection PyProtectedMember
-            b: Dict = other._data
-            c = NumData.Data()
-            for i in self._data:
-                c[i] = a[i] - b[i]
-            return c
+            _data = self._data_to_dict()
+            # 改成tuple的性能提高也许并比不上方便性
+            return _data.__iter__()
 
         def copy(self):
-            def copy_dict_num(x: Dict[str, int or float]):
+            def copy_dict_num(x: Dict[str, Union[int, float]]):
                 y = {}
                 for key, value in x.items():
                     y[key] = copy.copy(value)
                 return y
 
             c = NumData.Data()
-            c._data = copy_dict_num(self._data)
+            c._dict_to_data(copy_dict_num(self._data_to_dict()))
             return c
         # </editor-fold>
 
     def __init__(self):
         self.modifiers = modifier.ModifierAdmin()
+        self.action_bar = 0
         self._shown_data = NumData.Data()
         self._add_data = NumData.Data()
         self._base_data = NumData.Data()
 
-    def settle_num(self):
-        """
-        回合结束时的数据总结
-        """
-        if '时间冻结' not in self.modifiers.names():
-            return
-        shown = self._shown_data
+    def settle_when_turn_end(self):
+        """回合结束时的数据总结，主要是计算加值并加上去"""
+        m = self.modifiers
         base = self._base_data
         add = self._add_data
-        m = self.modifiers
-        for key in shown:
-            base[key] += m.addition_when_alt_by_act(key, add[key])
-            shown[key] = m.addition_when_alt_by_act(key, base[key])
+        if '时间冻结' not in m.names():
+            return
+        for key in base:
+            base[key] = base[key] + m.addition_when_alt_by_act(key, add[key])
             add[key] = 0
 
-    def __getitem__(self, item: str):
-        return self._base_data[item]
+    def settle_when_turn_check(self):
+        """回合开始时的加值，主要是计算“临时加值”，从base_data生成shown_data"""
+        m = self.modifiers
+        shown = self._shown_data
+        base = self._base_data
+        for key in shown:
+            shown[key] = m.addition_when_alt_by_act(key, base[key])
 
-    def __setitem__(self, key: str, value: int):
-        self._base_data[key] = value
+    def __getitem__(self, key: str):
+        """可能会降低运行效率"""
+        return self._base_data.__getitem__(key)
+
+    def __setitem__(self, key: str, value: Union[int, float]):
+        """可能会降低运行效率"""
+        self._base_data.__setitem__(key, value)
 
     def __iter__(self):
+        """可能会降低运行效率"""
         return self._base_data.__iter__()
 
     def copy(self):
@@ -148,16 +173,6 @@ class NumData(object):
     def spirit_power(self, val):
         """精力"""
         self._add_data.spirit_power = val
-
-    @property
-    def action_bar(self):
-        """行动条"""
-        return self._shown_data.action_bar
-
-    @action_bar.setter
-    def action_bar(self, val):
-        """行动条"""
-        self._add_data.action_bar = val
 
     @property
     def action_speed(self):
@@ -258,7 +273,7 @@ class Character(object):
         self._num_data = NumData()
         self._str_data = StrData()
 
-        self._num_data.action_speed = 100
+        self._num_data['行动速度'] = 100
 
     # ---------setter和getter--------- #
     @property
@@ -313,13 +328,13 @@ class Character(object):
                     continue
                 self.organs.data_default(i_exp['器官'])
 
-    def _data_default(self, data: Dict[str, str or int or float]):
+    def _data_default(self, data: Dict[str, str or Union[int, float]]):
         if data is None:
             return
         for key in self._num_data:
             if key in data:
                 a = data_process.process_load_data(data[key])
-                self._num_data[key] = self._num_data[key] + a
+                self._num_data[key] = a + self._num_data[key]
             # 注意这里是加号，这是为了进行多次配置而进行的改动
 
         for key in self._str_data:
@@ -327,7 +342,7 @@ class Character(object):
                 self._str_data[key] = data_process.process_load_data(data[key])
             # 对于字符串，后面的配置信息会直接覆盖前面的，所以还请注意
 
-    def set(self, key: str, val: str or int or float) -> None:
+    def set(self, key: str, val: str or Union[int, float]) -> None:
         """只有设置时才使用，平时请勿使用，以后会进行更换"""
         # TODO 角色设置系统
         if key in self._num_data:
@@ -337,11 +352,16 @@ class Character(object):
         else:
             return
 
-    def settle(self):
+    def settle_when_turn_end(self):
         """自身行动结束时或者特殊情况触发时，把临时属性变为永久属性、进行口上演出等"""
         self.modifiers.time_pass()
-        self._num_data.settle_num()
-        self.organs.settle()
+        self._num_data.settle_when_turn_end()
+        self.organs.settle_when_turn_end()
+
+    def settle_when_turn_check(self):
+        """从base_data生成shown_data，可以随时检测，但是为了效率不应该那样做"""
+        self._num_data.settle_when_turn_check()
+        self.organs.settle_when_turn_check()
 
     def _speak(self) -> List[str]:
         """输出口上"""
@@ -370,9 +390,9 @@ class Character(object):
         list_b = self.equipments.insert_able_point_list()
         list = list_a.concat(list_b)
         return list'''
-    '''def direct_set_num(self, key: str, val: int or float):
+    '''def direct_set_num(self, key: str, val: Union[int, float]):
             self._num_data[key] = val
-        def add_temp(self, key: str, val: int or float):
+        def add_temp(self, key: str, val: Union[int, float]):
             a = self.modifiers.addition_when_alt_by_act(key, val)
             self._num_temp[key] = self._num_temp[key] + a
         @property
@@ -384,7 +404,7 @@ class Character(object):
         @num_data.setter
         def num_data(self, val):
             pass        '''
-    '''def get(self, key: str) -> str or int or float or None:
+    '''def get(self, key: str) -> str or Union[int, float] or None:
             # 希望少用
             if key in self._num_data:
                 return self.get_num(key)

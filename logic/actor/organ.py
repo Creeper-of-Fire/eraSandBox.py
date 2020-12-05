@@ -1,5 +1,5 @@
 import copy
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Union
 
 from logic.actor import character, modifier
 from logic.data import file_parser, data_process
@@ -26,16 +26,19 @@ class OrganAdmin(object):
 
     def data_default(self, organ_data):
         """
-        :type organ_data: Dict[str, Dict[str, Dict[str, str or int or float or Dict[str, Dict[str, str or int or
-        float]]]]]
+        :type organ_data: Dict[str, Dict[str, Union[Dict[str,
+        Union[str, int, float], Dict[str, Dict[str, Union[str, int, float]]]]]]]
         """
         for i in self.all_organs:
             if i in organ_data:
                 self.all_organs[i].data_default(organ_data[i])
 
-    def settle(self):
-        self.all_organs['全身'].settle()
+    def settle_when_turn_end(self):
+        self.all_organs['全身'].settle_when_turn_end()
         # 递归汇总全部的器官（但是可能有时间停止）
+
+    def settle_when_turn_check(self):
+        self.all_organs['全身'].settle_when_turn_check()
 
     def append_organ(self, key, val):
         """
@@ -84,71 +87,92 @@ class OrganAdmin(object):
 
 
 class NumData(object):
+    """存储数字数据的类。
+    在这个游戏中，运算量的大头在角色AI部分涉及的大量数据处理。
+
+    Attributes:
+        _shown_data: 对外Read-only的数据，在内部通过settle_when_turn_check来从_base_data结算
+        _base_data: 理论上private的数据，但是能通过__setitem__来修改，通过__getitem__来读取（约定只在初始化时这样做）
+        _add_data: 对外Write-only的数据，在内部通过settle_when_turn_end来修改_base_data的数据
+        low_list: 下级器官们
+        modifiers: 自身的修正，在回合开始结束时都会影响数据
+    """
     modifiers: modifier.ModifierAdmin
     # 每个organ会有属于自己的修正
     low_list: List[Optional['Organ']]
+
     # 每个organ有它下属organ的指针
 
     class Data(object):
         # <editor-fold desc="Data类">
         def __init__(self):
-            self.level = 0
-            self.exp = 0
-            self.skill = 0
-            self.sensibility = 0
-            self.pain = 0
-            self.expand = 0
-            self.delight = 0
+            self.level: int = 0
+            self.exp: int = 0
+            self.skill: int = 0
+            self.sensibility: float = 0
+            self.pain: float = 0
+            self.expand: float = 0
+            self.delight: float = 0
             self.destruction: float = 0
-            self.lust = 0
+            self.lust: float = 0
 
-            self._data = {'等级': self.level,  # 似乎等级应该单独出来
-                          '经验': self.exp,
-                          '技巧': self.skill,
-                          '敏感': self.sensibility,
-                          '痛苦': self.pain,
-                          '扩张': self.expand,  # 扩张值，只影响扩张
-                          '快感': self.delight,
-                          '破坏': self.destruction,
-                          '欲望': self.lust,
-                          }
+        def _dict_to_data(self, _data: Dict[str, Union[int, float]]):
+            """解压dict到数据，通常在进行设置时和回合结束时"""
+            if '等级' in _data:
+                self.level = _data['最大体力']
+            if '经验' in _data:
+                self.exp = _data['体力']
+            if '技巧' in _data:
+                self.skill = _data['最大精力']
+            if '敏感' in _data:
+                self.sensibility = _data['精力']
+            if '痛苦' in _data:
+                self.pain = _data['行动速度']
+            if '扩张' in _data:
+                self.expand = _data['行动速度']
+            if '快感' in _data:
+                self.delight = _data['行动速度']
+            if '破坏' in _data:
+                self.destruction = _data['身高']
+            if '欲望' in _data:
+                self.lust = _data['体重']
 
-        def __getitem__(self, item: str):
-            return self._data[item]
+        def _data_to_dict(self) -> Dict[str, Union[int, float]]:
+            """压缩数据到dict"""
+            _data = {'等级': self.level,
+                     '经验': self.exp,
+                     '技巧': self.skill,
+                     '敏感': self.sensibility,
+                     '痛苦': self.pain,
+                     '扩张': self.expand,
+                     '快感': self.delight,
+                     '破坏': self.destruction,
+                     '欲望': self.lust,
+                     }
+            return _data
 
-        def __setitem__(self, key: str, value: int):
-            self._data[key] = value
+        def __getitem__(self, key: str):
+            _data = self._data_to_dict()
+            return _data[key]
+
+        def __setitem__(self, key: str, value: Union[int, float]):
+            _data = {key: value}
+            self._dict_to_data(_data)
 
         def __iter__(self):
-            return self._data.__iter__()
-
-        def __add__(self, other):
-            a: Dict = self._data
-            # noinspection PyProtectedMember
-            b: Dict = other._data
-            c = NumData.Data()
-            for i in self._data:
-                c[i] = a[i] + b[i]
-            return c
-
-        def __sub__(self, other):
-            a: Dict = self._data
-            # noinspection PyProtectedMember
-            b: Dict = other._data
-            c = NumData.Data()
-            for i in self._data:
-                c[i] = a[i] - b[i]
-            return c
+            _data = self._data_to_dict()
+            # 改成tuple的性能提高也许并比不上方便性
+            return _data.__iter__()
 
         def copy(self):
-            def copy_dict_num(x: Dict[str, int or float]):
+            def copy_dict_num(x: Dict[str, Union[int, float]]):
                 y = {}
                 for key, value in x.items():
                     y[key] = copy.copy(value)
                 return y
 
-            c = NumData()
-            c._shown_data = copy_dict_num(self._data)
+            c = NumData.Data()
+            c._dict_to_data(copy_dict_num(self._data_to_dict()))
             return c
         # </editor-fold>
 
@@ -183,10 +207,10 @@ class NumData(object):
         """等级"""
         return self._shown_data.level
 
-    @level.setter
+    '''@level.setter
     def level(self, val):
         """等级"""
-        self._add_data.level = val
+        self._add_data.level = val'''
 
     @property
     def exp(self):
@@ -253,10 +277,10 @@ class NumData(object):
         """破坏"""
         return self._shown_data.destruction
 
-    @destruction.setter
+    '''@destruction.setter
     def destruction(self, val):
         """破坏"""
-        self._add_data.destruction = val
+        self._add_data.destruction = val'''
 
     @property
     def lust(self):
@@ -270,25 +294,39 @@ class NumData(object):
 
     # </editor-fold>
 
-    def settle_num(self):  # 回合结束时的数据总结
+    def settle_when_turn_end(self):
+        """回合结束时的数据总结，主要是计算加值并加上去"""
         m = self.modifiers
+        add = self._add_data
+        base = self._base_data
         if len(self.low_list) != 0:
             # 先汇总下级器官
             for i_part in self.low_list:
-                i_part.settle()
-                for key in self._shown_data:
-                    self._shown_data[key] += i_part.num_data[key]
+                i_part.settle_when_turn_end()
+                for key in add:
+                    # noinspection PyProtectedMember
+                    add[key] = add[key] + i_part.num_data._add_data[key]
         if '时间冻结' not in m.names():
             return
-        shown = self._shown_data
-        base = self._base_data
-        add = self._add_data
-        for key in shown:
+        for key in base:
             base[key] += m.addition_when_alt_by_act(key, add[key])
-            shown[key] = m.addition_when_alt_by_act(key, base[key])
             add[key] = 0
 
-    def _add_num(self, key: str, val: int or float):
+    def settle_when_turn_check(self):
+        """回合开始时的加值，主要是计算“临时加值”，从base_data生成shown_data"""
+        m = self.modifiers
+        base = self._base_data
+        shown = self._shown_data
+        if len(self.low_list) != 0:
+            # 先汇总下级器官
+            for i_part in self.low_list:
+                i_part.settle_when_turn_check()
+                for key in shown:
+                    shown[key] = shown[key] + i_part.num_data._shown_data[key]
+        for key in shown:
+            shown[key] = m.addition_when_alt_by_act(key, base[key])
+
+    def _add_num(self, key: str, val: Union[int, float]):
         part = len(self.low_list)
         if part == 0:
             self._shown_data[key] += val
@@ -298,12 +336,15 @@ class NumData(object):
                 i_part.num_data._add_num(key, add_val)
 
     def __getitem__(self, item: str):
+        """可能会降低运行效率"""
         return self._shown_data[item]
 
     def __setitem__(self, key: str, value: int):
+        """可能会降低运行效率"""
         self._shown_data[key] = value
 
     def __iter__(self):
+        """可能会降低运行效率"""
         return self._shown_data.__iter__()
 
     def copy(self):
@@ -382,7 +423,8 @@ class Organ(object):
     def data_default(self, organ_data):
         # 未使用
         """
-        :type organ_data: Dict[ str, Dict[str, str or int or float or Dict[str, Dict[str, str or int or float]]]]
+        :type organ_data: Dict[ str, Union[Dict[str,
+        Union[str, int, float], Dict[str, Dict[str, Union[str, int, float]]]]]]
         """
         # 为上级结构增加的属性会流到如果存在该属性的下级结构中
         if organ_data is None:
@@ -436,7 +478,10 @@ class Organ(object):
         else:
             return
 
-    def settle(self):
+    def settle_when_turn_end(self):
         self.modifiers.time_pass()
-        self.num_data.settle_num()
+        self.num_data.settle_when_turn_end()
         # 在num_data里面进行递归
+
+    def settle_when_turn_check(self):
+        self._num_data.settle_when_turn_check()
