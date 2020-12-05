@@ -119,23 +119,23 @@ class NumData(object):
         def _dict_to_data(self, _data: Dict[str, Union[int, float]]):
             """解压dict到数据，通常在进行设置时和回合结束时"""
             if '等级' in _data:
-                self.level = _data['最大体力']
+                self.level = _data['等级']
             if '经验' in _data:
-                self.exp = _data['体力']
+                self.exp = _data['经验']
             if '技巧' in _data:
-                self.skill = _data['最大精力']
+                self.skill = _data['技巧']
             if '敏感' in _data:
-                self.sensibility = _data['精力']
+                self.sensibility = _data['敏感']
             if '痛苦' in _data:
-                self.pain = _data['行动速度']
+                self.pain = _data['痛苦']
             if '扩张' in _data:
-                self.expand = _data['行动速度']
+                self.expand = _data['扩张']
             if '快感' in _data:
-                self.delight = _data['行动速度']
+                self.delight = _data['快感']
             if '破坏' in _data:
-                self.destruction = _data['身高']
+                self.destruction = _data['破坏']
             if '欲望' in _data:
-                self.lust = _data['体重']
+                self.lust = _data['欲望']
 
         def _data_to_dict(self) -> Dict[str, Union[int, float]]:
             """压缩数据到dict"""

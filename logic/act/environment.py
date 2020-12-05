@@ -1,4 +1,4 @@
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Union
 
 import erajs.api as era
 
@@ -39,13 +39,19 @@ class Environment(object):
             # 选择大于100的而且最大的执行（如果需要输入指令就输入指令），然后执行了的减去100
 
         def _running():
-            def _ctrl_button(*args):
+            def _ctrl_button(**kwargs):
+                """一个动作控件
+
+                :param kwargs:
+                    args.act: 控件指向的动作
+                    args.chara: 控件的所有者角色
+                """
                 era.page()
-                act = args[0][0]
-                chara = args[0][1]
+                act = kwargs['act']
+                chara: Optional['character.Character'] = kwargs['chara']
                 chara.acts.manual_plan_acts(act)
                 chara.acts.work()
-                chara.settle()
+                chara.settle_when_turn_end()
                 era.t(wait=True)
                 era.goto(ui_turn_focus)
 
@@ -64,13 +70,13 @@ class Environment(object):
                     if i.acts.able_acts != 0:
                         era.page()
                         for a in i.acts.able_acts:
-                            era.b(a.name, _ctrl_button, (a, i))
+                            era.b(a.name, _ctrl_button, act=a, chara=i)
                         era.t()
                 else:
                     era.page()
                     i.acts.auto_plan_acts()
                     i.acts.work()
-                    i.settle()
+                    i.settle_when_turn_end()
                     era.t(wait=True)
                     _running()
 
