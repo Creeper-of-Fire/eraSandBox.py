@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 from typing import List, Optional
 
 import erajs.api as era
@@ -6,7 +7,7 @@ from logic.act import environment
 from logic.actor import character
 
 
-class CharacterAdmin:
+class CharacterAdmin(object):
     charalist: List[Optional['character.Character']]
     master: Optional['character.Character']
     assist: Optional['character.Character']

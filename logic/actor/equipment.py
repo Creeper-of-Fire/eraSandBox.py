@@ -1,4 +1,4 @@
-class EquipmentAdmin:
+class EquipmentAdmin(object):
     def __init__(self):
         pass
 
@@ -12,6 +12,6 @@ class EquipmentAdmin:
         return []
 
 
-class Equipment:
+class Equipment(object):
     def __init__(self):
         pass

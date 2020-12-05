@@ -2,7 +2,7 @@ from typing import Dict, Any
 from logic.data import file_parser, data_process
 
 
-class ExperienceAdmin:
+class ExperienceAdmin(object):
     data_list: Dict[str, Any]
 
     def __init__(self):
@@ -23,7 +23,7 @@ class ExperienceAdmin:
         self.data_list = data_list  # 然后character调用这个玩意
 
 
-class Experience:
+class Experience(object):
     name: str
     describe: str
 

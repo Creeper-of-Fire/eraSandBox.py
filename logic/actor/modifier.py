@@ -3,7 +3,7 @@ from typing import Dict, List
 from logic.data import file_parser, data_process
 
 
-class ModifierAdmin:
+class ModifierAdmin(object):
     def __init__(self):
         self.modifiers: Dict[str, Modifier] = {}
 
@@ -37,7 +37,10 @@ class ModifierAdmin:
         a = self.modifiers
         a.pop(name)
 
-    def add_get(self, key: str, val: int or float):
+    def addition_when_get_value(self, key: str, val: int or float):
+        """
+        相当于自带的数据，在回合末会计算并加到临时数据中
+        """
         def __g_add(chara, _key: str):
             add = 0
             for i in chara.modifiers:
@@ -58,7 +61,8 @@ class ModifierAdmin:
         a = (val + __g_add(self, key)) * __g_mlt(self, key)
         return a
 
-    def add_alt(self, key: str, val: int or float) -> int or float:
+    def addition_when_alt_by_act(self, key: str, val: int or float) -> int or float:
+        """每个回合加上去的数据会成为临时数据，在回合结束时转变为加值"""
         def __a_add(chara, _key: str) -> int or float:
             add = 0
             for i in chara.modifiers:
@@ -122,7 +126,7 @@ class ModifierAdmin:
             return Modifier
 
 
-class Modifier:
+class Modifier(object):
     name: str
     describe: str
     get_add: Dict[str, int or float]
@@ -140,7 +144,7 @@ class Modifier:
         self.alt_mlt = {}
         self.end_add = {}
         self.end_mlt = {}
-        self.timer = 0  # 为负一则是永久的
+        self.timer = -1  # 为负一则是永久的
 
     def set_default(self, name, timer: int = -1):
         self.name = name

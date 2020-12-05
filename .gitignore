@@ -9,6 +9,7 @@
 *.js
 *.json
 *.yml
+*.pyc
 *.csv
 *.log
 !run.bat

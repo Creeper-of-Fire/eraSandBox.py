@@ -62,7 +62,7 @@ class item_part
 
     get_num(key: string): number 
         if (key in self.num_data) 
-            g = self.modifiers.add_get(key, self.num_data[key])
+            g = self.modifiers.addition_when_get_value(key, self.num_data[key])
             return g
          else 
             return 0
@@ -73,7 +73,7 @@ class item_part
         self._add_num(key, add_val)
     
     private _add_num(key: string, val: number):  
-        a = self.modifiers.add_alt(key, val) #获得加成
+        a = self.modifiers.addition_when_alt_by_act(key, val) #获得加成
         part = 0
         self.num_data[key] = self.num_data[key] + a
     

@@ -4,7 +4,7 @@ from logic.actor import equipment, organ
 import logic.actor.character as character
 
 
-class Act:
+class Act(object):
     name: str
     describe: str
     passive_character: Optional['character.Character']
@@ -13,8 +13,6 @@ class Act:
     active_object: Optional['equipment.Equipment'] or Optional['character.Character']
     feature: List[str]
 
-    # timer为0时，是瞬间动作
-    # timer为-1时，是永久动作
     def __init__(self):
         self.passive_character = character.Character()
         self.active_character = character.Character()
@@ -138,4 +136,3 @@ class Hit(Act):
 
     def work(self):
         super(Hit, self).work()
-

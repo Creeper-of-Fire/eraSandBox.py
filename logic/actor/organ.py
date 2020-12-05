@@ -5,7 +5,7 @@ from logic.actor import character, modifier
 from logic.data import file_parser, data_process
 
 
-class OrganAdmin:
+class OrganAdmin(object):
     model: str  # 角色的器官模板，比如human
     all_organs: Dict[str, Optional['Organ']] = {}
     master: Optional['character.Character']
@@ -55,6 +55,7 @@ class OrganAdmin:
         a = Organ()
         return a
 
+    # <editor-fold desc="insert相关的代码，暂时不使用">
     '''def _set_default_insert_structure(self,insert_data):
         object_inserts: Dict[str, A.i.object_insert] = {}
         for i in self.all_organs:
@@ -62,88 +63,230 @@ class OrganAdmin:
             self.all_organs[i].object_insert.set_default(self.master, self.all_organs[i])
             object_inserts[i] = self.all_organs[i].object_insert
             #提取的是引用
-        
+
         A.i.load_map(insert_data['位点连接'], object_inserts)
         #初始化，然后连接
-    
+
     def insert_able_organ_list(self)-> List[A.i.object_insert]:
         organ_list: List[A.i.object_insert] = []
         for i in self.all_organs['外界'].object_insert.points:
             for j in i.toward:
                 organ_list.append(j.object_at)
         return organ_list
-    
+
     def insert_able_point_list(self) -> List[A.i.object_insert_point]:
         list: List[A.i.object_insert_point] = []
         for i in self.all_organs['外界'].object_insert.points:
             for j in i.toward:
                 list.append(j)
         return list'''
+    # </editor-fold>
 
 
-def copy_dict_num(x: Dict[str, int or float]):
-    y = {}
-    for key, value in x.items():
-        y[key] = copy.copy(value)
-    return y
-
-
-class NumData:
+class NumData(object):
     modifiers: modifier.ModifierAdmin
     # 每个organ会有属于自己的修正
     low_list: List[Optional['Organ']]
-
     # 每个organ有它下属organ的指针
+
+    class Data(object):
+        # <editor-fold desc="Data类">
+        def __init__(self):
+            self.level = 0
+            self.exp = 0
+            self.skill = 0
+            self.sensibility = 0
+            self.pain = 0
+            self.expand = 0
+            self.delight = 0
+            self.destruction: float = 0
+            self.lust = 0
+
+            self._data = {'等级': self.level,  # 似乎等级应该单独出来
+                          '经验': self.exp,
+                          '技巧': self.skill,
+                          '敏感': self.sensibility,
+                          '痛苦': self.pain,
+                          '扩张': self.expand,  # 扩张值，只影响扩张
+                          '快感': self.delight,
+                          '破坏': self.destruction,
+                          '欲望': self.lust,
+                          }
+
+        def __getitem__(self, item: str):
+            return self._data[item]
+
+        def __setitem__(self, key: str, value: int):
+            self._data[key] = value
+
+        def __iter__(self):
+            return self._data.__iter__()
+
+        def __add__(self, other):
+            a: Dict = self._data
+            # noinspection PyProtectedMember
+            b: Dict = other._data
+            c = NumData.Data()
+            for i in self._data:
+                c[i] = a[i] + b[i]
+            return c
+
+        def __sub__(self, other):
+            a: Dict = self._data
+            # noinspection PyProtectedMember
+            b: Dict = other._data
+            c = NumData.Data()
+            for i in self._data:
+                c[i] = a[i] - b[i]
+            return c
+
+        def copy(self):
+            def copy_dict_num(x: Dict[str, int or float]):
+                y = {}
+                for key, value in x.items():
+                    y[key] = copy.copy(value)
+                return y
+
+            c = NumData()
+            c._shown_data = copy_dict_num(self._data)
+            return c
+        # </editor-fold>
 
     def __init__(self):
         self.modifiers = modifier.ModifierAdmin()
-        self.low_list: List[Optional['Organ']] = []
+        self.low_list = []
 
-        self.level = 0
-        self.exp = 0
-        self.skill = 0
-        self.sensibility = 0
-        self.pain = 0
-        self.expand = 0
-        self.delight = 0
-        self._destruction = 0
-        self.lust = 0
+        self._add_data = NumData.Data()
+        self._shown_data = NumData.Data()
+        self._base_data = NumData.Data()
 
-        self._shown_data = {'等级': self.level,  # 似乎等级应该单独出来
-                            '经验': self.exp,
-                            '技巧': self.skill,
-                            '敏感': self.sensibility,
-                            '痛苦': self.pain,
-                            '扩张': self.expand,  # 扩张值，只影响扩张
-                            '快感': self.delight,
-                            '破坏': self.destruction,
-                            '欲望': self.lust,
-                            }
-        self._temp_data = copy_dict_num(self._shown_data)
-        self._base_data = copy_dict_num(self._shown_data)
+    # <editor-fold desc="# ---------setter和getter--------- #">
+    '''@property
+    def destruction(self) -> float:
+        # 破坏度，最大100，会查找自己的下级器官，得到破坏度上限
+        # destruction不应该手动修改，而是应该通过修正来增加
+        part = 0
+        val = self.modifiers.addition_when_get_value('破坏', 0)
+        if len(self.low_list) == 0:
+            part = 1
+        else:
+            for i in self.low_list:
+                part = part + 1
+                val = val + i.num_data.destruction
+        dt = self._base_data.destruction / part
+        if self._base_data.destruction > 100:
+            self._base_data.destruction = 100
+        return dt'''
+
+    @property
+    def level(self):
+        """等级"""
+        return self._shown_data.level
+
+    @level.setter
+    def level(self, val):
+        """等级"""
+        self._add_data.level = val
+
+    @property
+    def exp(self):
+        """经验"""
+        return self._shown_data.exp
+
+    @exp.setter
+    def exp(self, val):
+        """经验"""
+        self._add_data.exp = val
+
+    @property
+    def skill(self):
+        """技巧"""
+        return self._shown_data.skill
+
+    @skill.setter
+    def skill(self, val):
+        """技巧"""
+        self._add_data.skill = val
+
+    @property
+    def sensibility(self):
+        """敏感"""
+        return self._shown_data.sensibility
+
+    @sensibility.setter
+    def sensibility(self, val):
+        """敏感"""
+        self._add_data.sensibility = val
+
+    @property
+    def pain(self):
+        """痛苦"""
+        return self._shown_data.pain
+
+    @pain.setter
+    def pain(self, val):
+        """痛苦"""
+        self._add_data.pain = val
+
+    @property
+    def expand(self):
+        """扩张"""
+        return self._shown_data.expand
+
+    @expand.setter
+    def expand(self, val):
+        """扩张"""
+        self._add_data.expand = val
+
+    @property
+    def delight(self):
+        """快感"""
+        return self._shown_data.delight
+
+    @delight.setter
+    def delight(self, val):
+        """快感"""
+        self._add_data.delight = val
+
+    @property
+    def destruction(self):
+        """破坏"""
+        return self._shown_data.destruction
+
+    @destruction.setter
+    def destruction(self, val):
+        """破坏"""
+        self._add_data.destruction = val
+
+    @property
+    def lust(self):
+        """欲望"""
+        return self._shown_data.lust
+
+    @lust.setter
+    def lust(self, val):
+        """欲望"""
+        self._add_data.lust = val
+
+    # </editor-fold>
 
     def settle_num(self):  # 回合结束时的数据总结
+        m = self.modifiers
         if len(self.low_list) != 0:
             # 先汇总下级器官
             for i_part in self.low_list:
                 i_part.settle()
                 for key in self._shown_data:
                     self._shown_data[key] += i_part.num_data[key]
-        if '时间冻结' not in self.modifiers.names():
+        if '时间冻结' not in m.names():
             return
-        s = self._shown_data
-        b = self._base_data
-        m = self.modifiers
-        for key, value in s.items():
-            value -= b[key]  # 获得本回合的原始加值（这里定义了运算符）
-            # noinspection PyUnusedLocal
-            value = m.add_alt(key, value)
-            # 通过修正计算实际加值（为了效率而在总结时进行）
-        self._temp_data = copy_dict_num(s)  # self._num_temp用于获得口上
-        for key, value in b.items():
-            b += s[key]
-            s[key] += m.add_get(key, value)
-            # 通过修正获得显示值的加值
+        shown = self._shown_data
+        base = self._base_data
+        add = self._add_data
+        for key in shown:
+            base[key] += m.addition_when_alt_by_act(key, add[key])
+            shown[key] = m.addition_when_alt_by_act(key, base[key])
+            add[key] = 0
 
     def _add_num(self, key: str, val: int or float):
         part = len(self.low_list)
@@ -154,24 +297,6 @@ class NumData:
                 add_val = val / part  # 未经过加权，直接分配
                 i_part.num_data._add_num(key, add_val)
 
-    # ---------setter和getter--------- #
-    @property
-    def destruction(self) -> float:
-        # 破坏度，最大100，会查找自己的下级器官，得到破坏度上限
-        # destruction不应该手动修改，而是应该通过修正来增加
-        part = 0
-        val = 0
-        if len(self.low_list) == 0:
-            part = 1
-        else:
-            for i in self.low_list:
-                part = part + 1
-                val = val + i.num_data.destruction
-        dt = self._destruction / part
-        return dt
-
-    # ---------setter和getter--------- #
-
     def __getitem__(self, item: str):
         return self._shown_data[item]
 
@@ -181,31 +306,13 @@ class NumData:
     def __iter__(self):
         return self._shown_data.__iter__()
 
-    def __add__(self, other) -> Optional['NumData']:
-        a: Dict = self._shown_data
-        # noinspection PyProtectedMember
-        b: Dict = other._shown_data
-        c = NumData()
-        for i in self._shown_data:
-            c[i] = a[i] + b[i]
-        return c
-
-    def __sub__(self, other):
-        a: Dict = self._shown_data
-        # noinspection PyProtectedMember
-        b: Dict = other._shown_data
-        c = NumData()
-        for i in self._shown_data:
-            c[i] = a[i] - b[i]
-        return c
-
     def copy(self):
         c = NumData()
         c._shown_data = self._shown_data.copy()
         return c
 
 
-class StrData:
+class StrData(object):
     _data: Dict[str, str]
 
     def __init__(self):
@@ -229,7 +336,7 @@ class StrData:
 # 一个角色的organ参与组成以下几种数据结构：
 # 解剖学树——有序树，是最主要的树，用处：创建成员，进行数据关联，显示给玩家
 # 通道网——一个图，用处：构成让人插入的结构
-class Organ:
+class Organ(object):
     name: str
     _num_data: NumData
     _num_shown: NumData
@@ -248,41 +355,16 @@ class Organ:
         self._str_data = StrData()
         # 初始化相关的数据，即使在战斗中它们也会起作用
         self.o_admin = OrganAdmin()
-
-        '''self.object_insert = A.i.object_insert()'''
+        # self.object_insert = A.i.object_insert()
+        # TODO 插入的完善
 
     @property
     def num_data(self) -> NumData:
-        return self._num_data  # 每个回合，将self._num_shown用于展示和加算
-
-    def _settle_num(self):  # 回合结束时的数据总结
-        self.num_data.settle_num()
-        '''if '时间冻结' not in self.modifiers.names():
-            return
-        num_data_add = self._num_shown - self._num_data  # 获得本回合的原始加值（这里定义了运算符）
-        for key in num_data_add:
-            num_data_add[key] = self.modifiers.add_alt(key, num_data_add[key])
-            # 通过修正计算实际加值（为了效率而在总结时进行）
-        self._num_temp = num_data_add.copy()  # self._num_temp用于获得口上
-        for key in num_data_add:
-            num_data_add[key] = self.modifiers.add_get(key, self._num_data[key])
-            # 通过修正获得显示值的加值
-        self._num_shown += num_data_add'''
-
-        # 字符串处理
+        return self._num_data
 
     @property
     def str_data(self):
         return
-
-    '''def get_str(self, key: str) -> str:
-        if key in self._str_data:
-            return self._str_data[key]
-        else:
-            return ''
-
-    def set_str(self, key: str, val: str):
-        self._str_data[key] = val'''
 
     @property
     def modifiers(self):
@@ -333,6 +415,7 @@ class Organ:
             self.low_list.append(og)
             # 向自己的下级添加
 
+    # <editor-fold desc="以前的获取代码，现在不用了">
     # 希望少用
     '''def get(self, key: str):
         if key in self._num_data:
@@ -341,6 +424,8 @@ class Organ:
             return self.get_str(key)
         else:
             return None'''
+
+    # </editor-fold>
 
     def set(self, key: str, val):
         # 只有设置时才使用
@@ -353,4 +438,5 @@ class Organ:
 
     def settle(self):
         self.modifiers.time_pass()
-        self._settle_num()
+        self.num_data.settle_num()
+        # 在num_data里面进行递归

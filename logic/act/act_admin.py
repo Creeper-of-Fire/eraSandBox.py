@@ -4,7 +4,7 @@ from logic.act import act_group
 from logic.actor import character
 
 
-class ActAdmin:
+class ActAdmin(object):
     owner: Optional['character.Character']
     to_do_list: List[act_group.ActGroup]  # 可用的动作组
     able_acts: List[act_group.ActGroup]

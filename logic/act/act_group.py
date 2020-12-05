@@ -1,11 +1,11 @@
-from typing import List,Optional
+from typing import List, Optional
 
 import erajs.api as era
 from logic.act import act
 from logic.actor import character
 
 
-class ActGroup:
+class ActGroup(object):
     name: str
     describe: str
     active_character: Optional['character.Character']

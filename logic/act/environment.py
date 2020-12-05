@@ -6,7 +6,7 @@ from logic.actor import character
 
 
 # environment是一个数据和界面交互的层
-class Environment:
+class Environment(object):
     characters: List[Optional['character.Character']]
     start: List[int or float]
     action_values: Dict[str, int or float]
@@ -21,7 +21,7 @@ class Environment:
         # self.items = []
 
     def add_chara(self, temp_chara: Optional['character.Character']):
-        temp_chara.id = len(self.characters)
+        # temp_chara.id = len(self.characters)
         self.characters.append(temp_chara)
 
     def turn(self):
